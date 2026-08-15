@@ -63,6 +63,7 @@ class Settings:
     watch_dir: Path
     csv_pattern: str
     var_dir: Path
+    after_processing: str  # delete | archive
     output: OutputConfig
     kkj: KkjConfig
     websearch: WebSearchConfig
@@ -90,14 +91,15 @@ class Settings:
     def processed_dir(self) -> Path:
         return self.var_dir / "processed"
 
+    @property
+    def keeps_processed_csv(self) -> bool:
+        return self.after_processing == "archive"
+
     def ensure_dirs(self) -> None:
-        for d in (
-            self.var_dir,
-            self.notices_dir,
-            self.drafts_dir,
-            self.processed_dir,
-            self.pdf_inbox,
-        ):
+        dirs = [self.var_dir, self.notices_dir, self.drafts_dir, self.pdf_inbox]
+        if self.keeps_processed_csv:
+            dirs.append(self.processed_dir)
+        for d in dirs:
             d.mkdir(parents=True, exist_ok=True)
 
 
@@ -116,6 +118,7 @@ def load_settings(path: Path) -> Settings:
         watch_dir=_expand(paths.get("watch_dir", "~/Documents/njss/inbox")),
         csv_pattern=paths.get("csv_pattern", "案件情報*.csv"),
         var_dir=_expand(paths.get("var_dir", "var")),
+        after_processing=paths.get("after_processing", "delete"),
         output=OutputConfig(
             subject_template=out.get(
                 "subject_template", "[NJSS] {date} 入札案件 掲載{adopt}件 / 要確認{review}件"

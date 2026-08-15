@@ -1,8 +1,13 @@
 .venv/
-var/
-inbox/          # NJSSからダウンロードしたCSVの置き場（業務データのため除外）
 __pycache__/
 *.pyc
 .pytest_cache/
-# 判定基準・宛先など、社内固有の情報を含みうる設定は必要に応じて除外する
+.ruff_cache/
+
+# 業務データ。NJSSから取得した案件情報を含むためコミットしない
+# （.gitignore は行末コメントを解釈しないので、必ず別行に書くこと）
+inbox/
+var/
+
+# 判定基準や宛先など社内固有の情報を含むようになったら、下記を有効にする
 # config/settings.yaml

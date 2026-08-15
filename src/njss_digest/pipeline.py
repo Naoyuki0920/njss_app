@@ -76,7 +76,8 @@ def run(
     paths = options.files or find_csv_files(
         settings.watch_dir,
         name_pattern=settings.csv_pattern,
-        processed_dir=settings.processed_dir,
+        # archive運用のときだけ、同名ファイルの再処理を防ぐ
+        processed_dir=settings.processed_dir if settings.keeps_processed_csv else None,
     )
     if not paths:
         log.warning(
@@ -362,7 +363,7 @@ def run(
         )
         result.output = OutputResult(slack_skipped_reason="新規案件なし")
         if not options.dry_run:
-            _archive_csvs(paths, settings.processed_dir)
+            _finish_csvs(paths, settings)
         return result
 
     result.output = deliver(
@@ -382,16 +383,24 @@ def run(
         log.info("dry-run のため成果物は保存せず、CSVも移動しません")
         return result
 
-    _archive_csvs(paths, settings.processed_dir)
+    _finish_csvs(paths, settings)
     return result
 
 
-def _archive_csvs(paths: list[Path], processed_dir: Path) -> None:
-    """処理済みCSVを退避する。次回実行時に再処理しないため。"""
+def _finish_csvs(paths: list[Path], settings: Settings) -> None:
+    """処理し終えたCSVを片付ける。
+
+    設定に応じて削除するか退避する。いずれの場合も、同じ案件を二重に
+    配信しない仕組み（案件IDをDBに記録する）は別途働いている。
+    """
     for p in paths:
-        dest = processed_dir / p.name
         try:
-            shutil.move(str(p), str(dest))
-            log.info("処理済みへ移動: %s", dest)
+            if settings.keeps_processed_csv:
+                dest = settings.processed_dir / p.name
+                shutil.move(str(p), str(dest))
+                log.info("処理済みへ移動: %s", dest)
+            else:
+                p.unlink()
+                log.info("処理済みのため削除: %s", p.name)
         except OSError as e:
-            log.warning("CSVを移動できませんでした: %s", e)
+            log.warning("CSVを片付けられませんでした: %s (%s)", p.name, e)

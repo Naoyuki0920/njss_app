@@ -5,8 +5,13 @@ paths:
   # ダウンロード後、ここに移動してください（watch モードなら置いた時点で自動実行）。
   watch_dir: ~/Documents/njss/inbox
   csv_pattern: "案件情報*.csv"
-  # 作業用ディレクトリ（DB・公告文キャッシュ・下書き・ログ）
+  # 作業用ディレクトリ（DB・公告文キャッシュ・文案・ログ）
   var_dir: var
+  # 処理後のCSVの扱い
+  #   delete  : 削除する。inboxが常に空になる
+  #   archive : var/processed/ へ移動して残す
+  # ※どちらを選んでも、同じ案件を二重に配信しない仕組み（案件IDの記録）は働きます
+  after_processing: delete
 
 output:
   # 件名の雛形。{date} {adopt} {review} {total} が使えます
