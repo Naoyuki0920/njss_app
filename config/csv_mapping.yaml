@@ -1,0 +1,62 @@
+# NJSS 案件ダウンロードCSV の列マッピング
+#
+# 実データ『案件情報_カーボンニュートラル_新着案件_2026-08-09.csv』から確定。
+#   - 文字コード: CP932
+#   - ヘッダ行: なし（1行目からデータ）
+#   - 列数: 30
+#
+# 列の意味は位置から推定している。NJSSがCSVの列順を変更した場合に黙って壊れないよう、
+# `validate` の自己診断で毎回検証する（案件IDとURL末尾の一致など）。
+# 推定が誤っていた場合は `field` を書き換えるだけで直せる（コード変更不要）。
+
+format:
+  encoding_candidates: [cp932, utf-8-sig, utf-8]
+  has_header: false
+  expected_columns: 30
+  # 列数が変わっても即エラーにはせず、警告して既知の列だけ読む
+  strict_column_count: false
+
+# field: Case のフィールド名。null は「意味が未確定・未使用」を表す。
+# multi: true の列は改行区切りの複数値として list に展開する。
+# type: date は日付としてパースする（対応形式は下の date_formats）。
+columns:
+  - {index: 0,  field: condition_name, label: 検索条件名}
+  - {index: 1,  field: case_id,        label: 案件ID}
+  - {index: 2,  field: bid_type,       label: 入札形式}
+  - {index: 3,  field: name,           label: 案件名}
+  - {index: 4,  field: url,            label: 案件詳細URL}
+  - {index: 5,  field: agency,         label: 発注機関}
+  - {index: 6,  field: agency_pref,    label: 機関所在地（都道府県）}
+  - {index: 7,  field: delivery_place, label: 履行・納品場所, multi: true}
+  - {index: 8,  field: announced_on,   label: 公示日,         type: date}
+  - {index: 9,  field: deadline_on,    label: 締切日,         type: date}
+  - {index: 10, field: briefing_on,    label: 説明会日,       type: date}
+  - {index: 11, field: docs_due_on,    label: 資料等提出日,   type: date}
+  - {index: 12, field: qualification,  label: 入札資格,       multi: true}
+  - {index: 13, field: industry,       label: 業種,           multi: true}
+  - {index: 14, field: summary,        label: 案件概要}
+  - {index: 15, field: note,           label: 案件備考}
+  - {index: 17, field: price_text,     label: 予定価格・落札金額（入札前は "-"）}
+  - {index: 29, field: cert,           label: 認証資格の有無（推定）}
+
+date_formats: ["%Y/%m/%d", "%Y-%m-%d", "%Y年%m月%d日"]
+
+# 値が入っていても「情報なし」とみなす文字列
+null_markers: ["-", "―", "‐", "なし", "無し"]
+
+# 必須フィールド。1件でも欠けたらエラーで停止する。
+# （列順が変わったのに空データで正常終了する、が最悪の失敗モードのため）
+required_fields: [case_id, name, url]
+
+# 自己診断。毎回の読み込み時に実行し、失敗したらエラーで停止する。
+validate:
+  # 案件IDが案件詳細URLの末尾の数値と一致すること。
+  # これが通れば列1と列4の対応、ひいては位置ベースのマッピング全体が正しいと確認できる。
+  - type: case_id_matches_url_tail
+  # URLのホストがNJSSであること
+  - type: url_host_is
+    value: www2.njss.info
+  # 日付として読めた列は、公示日 <= 締切日 の関係にあること（両方ある行のみ検査）
+  - type: date_order
+    earlier: announced_on
+    later: deadline_on

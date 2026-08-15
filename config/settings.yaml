@@ -1,0 +1,79 @@
+# njss-digest 動作設定
+
+paths:
+  # NJSSからダウンロードしたCSVを置く場所。
+  # ダウンロード後、ここに移動してください（watch モードなら置いた時点で自動実行）。
+  watch_dir: ~/Documents/njss/inbox
+  csv_pattern: "案件情報*.csv"
+  # 作業用ディレクトリ（DB・公告文キャッシュ・下書き・ログ）
+  var_dir: var
+
+output:
+  # 件名の雛形。{date} {adopt} {review} {total} が使えます
+  subject_template: "[NJSS] {date} 入札案件 掲載{adopt}件 / 要確認{review}件"
+
+  # 貼り付け用テキストを var/drafts/*.txt に保存する
+  text: true
+  # 保存と同時にクリップボードへコピーする（社内OAへ貼り付けやすくするため）
+  clipboard: true
+  # 保存後にFinderで場所を開く
+  reveal_in_finder: false
+
+  slack:
+    enabled: true
+    # webhook : Incoming Webhook のURLへPOST（設定が簡単。URL自体が秘密）
+    # bot     : ボットトークンで chat.postMessage（チャンネル指定・スレッド返信が可能）
+    mode: webhook
+    # bot モードのときの投稿先。例: "#nyusatsu" またはチャンネルID
+    channel: ""
+    # WebhookのURL / ボットトークンはKeychainから取得する（設定ファイルに書かない）
+    #   security add-generic-password -a "$USER" -s njss-digest-slack -U -w
+    keychain_service: njss-digest-slack
+    # 投稿前に確認する。false にすると自動投稿になる。
+    # 個人用チャンネルへのメモとして使う場合は false で問題ありません。
+    # true のまま launchd 等の非対話実行をすると、確認できないため投稿を見送ります。
+    confirm: false
+    username: ""
+    icon_emoji: ""
+
+enrich:
+  kkj:
+    enabled: true
+    window_days: 14      # 公示日の前後何日を検索対象にするか
+    threshold: 0.70      # 案件名の類似度しきい値。下回るものはマッチさせない
+    min_interval: 1.0    # APIリクエストの最小間隔(秒)
+  websearch:
+    # 既定で無効。実測で3件試して0件しか取得できなかったため。
+    # 日本の自治体の入札公告は電子入札システム（フレーム/JS前提の検索型）の
+    # 奥にあり、個別案件のページが検索エンジンにインデックスされていない。
+    # 静的ページで公開する発注機関（国の機関など）が対象に入ったら有効化する。
+    enabled: false
+    # 検索と本文の書き出しが主なので、判定モデルより安価なものを使う
+    model: claude-sonnet-5
+    effort: low
+    # web_fetch が1ページから読み込む本文の上限トークン数（コスト抑制）
+    max_content_tokens: 20000
+    # 公式の一次情報のみを根拠にする（まとめサイト等の二次情報を掴まないため）
+    allowed_domains: ["lg.jp", "go.jp"]
+    max_uses: 4
+
+llm:
+  enabled: true
+  # APIキーの取得元。環境変数ではなくmacOS Keychainに置く。
+  #   security add-generic-password -a "$USER" -s njss-digest-anthropic -U -w
+  api_key_keychain_service: njss-digest-anthropic
+  # Keychainに無い場合に環境変数 ANTHROPIC_API_KEY へフォールバックするか
+  allow_env_api_key: true
+  # 最終判定を行うモデル
+  model: claude-opus-5
+  # 公告文から該当箇所を原文抽出する前段モデル（入力トークンの圧縮用）
+  extract_model: claude-haiku-4-5
+  # 公告文が長い場合の切り詰め上限（文字数）
+  max_notice_chars: 120000
+  # 1回の実行で使う出力トークンの上限。超過したら以降は「資料未取得」にする
+  daily_output_token_budget: 200000
+  effort: high
+
+judge:
+  # これ未満の文字数の公告文は判定に使わない（「資料未取得」扱い）
+  min_notice_chars: 500

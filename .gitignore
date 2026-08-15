@@ -1,0 +1,8 @@
+.venv/
+var/
+inbox/          # NJSSからダウンロードしたCSVの置き場（業務データのため除外）
+__pycache__/
+*.pyc
+.pytest_cache/
+# 判定基準・宛先など、社内固有の情報を含みうる設定は必要に応じて除外する
+# config/settings.yaml

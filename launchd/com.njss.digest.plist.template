@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  常駐監視をログイン時に自動起動する設定。
+
+  設置手順:
+    1. __PROJECT_DIR__ を実際のパスに置き換える（例: /Users/naoyuki/Documents/njss）
+    2. APIキーを使う場合は EnvironmentVariables に追記する
+    3. 配置と読み込み:
+         cp launchd/com.njss.digest.plist.template ~/Library/LaunchAgents/com.njss.digest.plist
+         # 上記の置換を行ってから
+         launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.njss.digest.plist
+    4. 動作確認:
+         launchctl kickstart -k gui/$(id -u)/com.njss.digest
+         tail -f __PROJECT_DIR__/var/logs/watch.log
+    5. 停止:
+         launchctl bootout gui/$(id -u)/com.njss.digest
+
+  定時実行にしたい場合は ProgramArguments の watch を run に変え、
+  KeepAlive を消して StartCalendarInterval を有効にする。
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.njss.digest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PROJECT_DIR__/.venv/bin/njss-digest</string>
+        <string>watch</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_DIR__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>LANG</key>
+        <string>ja_JP.UTF-8</string>
+        <!-- APIキーをここに書く場合、このファイルの権限を 600 にすること
+        <key>ANTHROPIC_API_KEY</key>
+        <string>sk-ant-...</string>
+        -->
+    </dict>
+
+    <!-- 常駐監視。落ちても再起動する -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- 定時実行にする場合はこちらを使う（平日 9:00）
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+    -->
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_DIR__/var/logs/watch.log</string>
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_DIR__/var/logs/watch.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
